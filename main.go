@@ -86,12 +86,77 @@ func setClipboardText(s string) error {
 
 func fixPrefix(text string) string {
 	lines := strings.Split(text, "\n")
+
+	// Track which lines originally had the 2-space prefix
+	hadPrefix := make([]bool, len(lines))
 	for i, line := range lines {
 		if strings.HasPrefix(line, "  ") {
+			hadPrefix[i] = true
 			lines[i] = line[2:]
 		}
 	}
-	return strings.Join(lines, "\n")
+
+	// Rejoin wrapped lines: if both the current and next line had the prefix,
+	// and the break looks like a soft wrap (not an intentional newline), join them.
+	var result []string
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		for i+1 < len(lines) && isWrappedContinuation(lines, hadPrefix, i) {
+			i++
+			line = strings.TrimRight(line, "\r") + " " + lines[i]
+		}
+		result = append(result, line)
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// isWrappedContinuation returns true if lines[i+1] looks like a soft-wrapped
+// continuation of lines[i] rather than an intentional new line.
+func isWrappedContinuation(lines []string, hadPrefix []bool, i int) bool {
+	cur := lines[i]
+	next := lines[i+1]
+
+	// Both lines must have originally had the 2-space prefix
+	if !hadPrefix[i] || !hadPrefix[i+1] {
+		return false
+	}
+
+	// Current line must have content (blank line = intentional break)
+	if strings.TrimRight(cur, " \t\r") == "" {
+		return false
+	}
+
+	// Next line must have content
+	trimmed := strings.TrimRight(next, " \t\r")
+	if trimmed == "" {
+		return false
+	}
+
+	// Next line starting with whitespace suggests structure (code, indentation)
+	if len(next) > 0 && (next[0] == ' ' || next[0] == '\t') {
+		return false
+	}
+
+	// Next line starting with a bullet or list marker suggests intentional break
+	if len(trimmed) > 0 && (trimmed[0] == '-' || trimmed[0] == '*' || trimmed[0] == '#') {
+		return false
+	}
+
+	// Numbered list (e.g., "1. " or "1) ")
+	if len(trimmed) > 1 && trimmed[0] >= '0' && trimmed[0] <= '9' {
+		for j := 1; j < len(trimmed); j++ {
+			if trimmed[j] >= '0' && trimmed[j] <= '9' {
+				continue
+			}
+			if trimmed[j] == '.' || trimmed[j] == ')' {
+				return false
+			}
+			break
+		}
+	}
+
+	return true
 }
 
 func main() {
