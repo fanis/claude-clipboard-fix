@@ -133,6 +133,12 @@ func isWrappedContinuation(lines []string, hadPrefix []bool, i int) bool {
 		return false
 	}
 
+	// Current line must be long enough to suggest it hit a wrap boundary.
+	// Claude Code wraps around 80 chars; short lines mean intentional breaks.
+	if len(strings.TrimRight(cur, " \t\r")) < 60 {
+		return false
+	}
+
 	// Next line starting with whitespace suggests structure (code, indentation)
 	if len(next) > 0 && (next[0] == ' ' || next[0] == '\t') {
 		return false
