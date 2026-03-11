@@ -6,6 +6,8 @@ A fast, native Windows utility that strips the 2-space prefix from text copied f
 
 Claude Code's terminal renderer adds 2-space leading padding to every line. When you select and copy text, that padding comes along. This tool removes it.
 
+![Before and after: 2-space prefix removed](screenshots/hero.jpg)
+
 ## Usage
 
 1. Select and copy text from Claude Code output
